@@ -40,6 +40,24 @@ export const createNumberExpression = (value: number): NumberExpression => ({
 export const isANumberExpression = (node: Node): node is NumberExpression =>
   node.__type === 'NumberExpression'
 
+export interface BooleanExpression {
+  __type: 'BooleanExpression'
+  value: boolean
+}
+export const createBooleanExpression = (value: boolean): BooleanExpression => ({
+  __type: 'BooleanExpression',
+  value,
+})
+
+export interface StringExpression {
+  __type: 'StringExpression'
+  value: string
+}
+export const createStringExpression = (value: string): StringExpression => ({
+  __type: 'StringExpression',
+  value,
+})
+
 export interface PipeExpression {
   __type: 'PipeExpression'
   left: Expression
@@ -165,6 +183,8 @@ export type Expression =
   | Identifier
   | VariableAccess
   | NumberExpression
+  | BooleanExpression
+  | StringExpression
   | PipeExpression
   | AOCFunction
   | FunctionCall
