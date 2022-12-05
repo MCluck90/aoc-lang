@@ -1857,10 +1857,10 @@ parse-json@^5.2.0:
     json-parse-even-better-errors "^2.3.0"
     lines-and-columns "^1.1.6"
 
-parsnip-ts@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/parsnip-ts/-/parsnip-ts-1.1.0.tgz#e3a5822f90cd607c0812db7a3b84fe87813e2ff9"
-  integrity sha512-qikuHFf30wqyZmHRO2wMHJkFLavQbnBi9eYGffFj+Kx+/1kKsa1+yiM1fCnnY+ZfHlMUZG7hMxlwNmcB5kcryw==
+parsnip-ts@^1.2.0:
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/parsnip-ts/-/parsnip-ts-1.2.0.tgz#490c0c7ccd9e3203ace31d065015a7cb3ce09cbe"
+  integrity sha512-h28T9jTUL181CyXlBmH49IViiIVrMxC9P3G0PDOqVVhsRQwA+7axCcrMk7FwvK/6SBOBZ+FVkWEG5hDGLVJAqQ==
 
 path-exists@^4.0.0:
   version "4.0.0"

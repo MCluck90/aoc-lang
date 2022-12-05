@@ -6,35 +6,36 @@ import {
   maybe,
   lazy,
   Parser,
+  pair,
 } from 'parsnip-ts'
 import { cStyleComment } from 'parsnip-ts/comments'
-import {
-  signedSeparatedFloatingPoint,
-  signedSeparatedInteger,
-} from 'parsnip-ts/numbers'
+import { seq } from 'parsnip-ts/seq'
+import { separatedFloatingPoint, separatedInteger } from 'parsnip-ts/numbers'
 import { singleQuoteString, doubleQuoteString } from 'parsnip-ts/strings'
 import { createToken } from 'parsnip-ts/token'
 import { ws } from 'parsnip-ts/whitespace'
 import {
-  AOCFunction,
+  FunctionExpression,
   createArgument,
   createArgumentList,
+  createBinaryExpression,
   createBlock,
   createBooleanExpression,
-  createFunction,
+  createFunctionExpression,
   createFunctionCall,
   createIdentifier,
   createNumberExpression,
   createParameter,
   createParameterList,
   createPart1,
-  createPipeExpression,
   createProgram,
   createStringExpression,
+  createUnaryExpression,
   createVariableAccess,
   Expression,
   FunctionCall,
   Identifier,
+  isAExpression,
 } from './ast'
 
 const token = createToken(ws)
@@ -57,28 +58,19 @@ const _braces = [token(/{/y), token(/}/y)] as const
 
 const _comma = token(/,/y)
 const _fatArrow = token(/=>/y)
-const _pipelineOperator = token(/\|/y)
-const _equalityOperator = token(/==/y)
-const _lessThanOperator = token(/</y)
-const _lessThanOrEqualOperator = token(/<=/y)
-const _greaterThanOperator = token(/>/y)
-const _greaterThanOrEqualOperator = token(/>=/y)
-const _multiplyOperator = token(/\*/y)
-const _divideOperator = token(/\//y)
-const _additionOperator = token(/\+/y)
-const _subtractionOperator = token(/-/y)
-const _negationOperator = token(/-/y)
-const _operator = _pipelineOperator
-  .or(_equalityOperator)
-  .or(_lessThanOperator)
-  .or(_lessThanOrEqualOperator)
-  .or(_greaterThanOperator)
-  .or(_greaterThanOrEqualOperator)
-  .or(_multiplyOperator)
-  .or(_divideOperator)
-  .or(_additionOperator)
-  .or(_subtractionOperator)
-  .or(_negationOperator)
+const _pipelineOperator = token(/\|/y) as Parser<'|'>
+const _equalOperator = token(/==/y) as Parser<'=='>
+const _notEqualOperator = token(/!=/y) as Parser<'!='>
+const _lessThanOperator = token(/</y) as Parser<'<'>
+const _lessThanOrEqualOperator = token(/<=/y) as Parser<'<='>
+const _greaterThanOperator = token(/>/y) as Parser<'>'>
+const _greaterThanOrEqualOperator = token(/>=/y) as Parser<'>='>
+const _multiplyOperator = token(/\*/y) as Parser<'*'>
+const _divideOperator = token(/\//y) as Parser<'/'>
+const _additionOperator = token(/\+/y) as Parser<'+'>
+const _subtractionOperator = token(/-/y) as Parser<'-'>
+const _negationOperator = token(/!/y) as Parser<'!'>
+const _terminationOperator = token(/;/y) as Parser<';'>
 
 const _identifier: Parser<Identifier> = token(/[a-z_][a-z0-9_]*/iy).bind(
   (identifier) =>
@@ -87,61 +79,141 @@ const _identifier: Parser<Identifier> = token(/[a-z_][a-z0-9_]*/iy).bind(
       : constant(createIdentifier(identifier))
 )
 
-let _expression: Parser<Expression> = error('Not yet implemented')
+export let _expression: Parser<Expression> = error('Not yet implemented')
 
-const _number = signedSeparatedFloatingPoint
-  .or(signedSeparatedInteger)
+const _number = ws
+  .and(separatedFloatingPoint.or(separatedInteger))
   .map(createNumberExpression)
 const _boolean = _trueKeyword.or(_falseKeyword).map(createBooleanExpression)
-const _string = singleQuoteString
-  .or(doubleQuoteString)
+const _string = ws
+  .and(singleQuoteString.or(doubleQuoteString))
   .map(createStringExpression)
 const _literal = _number.or(_boolean).or(_string)
 
-const _primaryExp = _literal.or(between(_parens, _expression))
-
 const _variableAccess = _identifier.map(createVariableAccess)
 let _functionCall: Parser<FunctionCall> = error('Not yet implemented')
-let _function: Parser<AOCFunction> = error('Not yet implemented')
-_expression = _number
+let _functionExpression: Parser<FunctionExpression> = error(
+  'Not yet implemented'
+)
+
+const _primaryExp = _literal
+  .or(lazy(() => _functionExpression))
   .or(lazy(() => _functionCall))
   .or(_variableAccess)
-  .or(lazy(() => _function))
-  .bind((expression) =>
-    maybe(
-      _pipelineOperator.and(
-        lazy(() => _expression).map((right) =>
-          createPipeExpression(expression, right)
-        )
-      )
-    ).bind((maybePipe) => constant(maybePipe || expression))
+  .or(
+    between(
+      _parens,
+      lazy(() => _expression)
+    )
   )
+
+const _unary = seq([_negationOperator.or(_subtractionOperator), _primaryExp])
+  .map(([operator, value]) => createUnaryExpression(operator, value))
+  .or(_primaryExp)
+
+const _factor = _unary.bind((left) =>
+  zeroOrMore(pair(_divideOperator.or(_multiplyOperator), _unary)).map(
+    (rightSides) =>
+      rightSides.length === 0
+        ? left
+        : rightSides.reduce(
+            (acc, [operator, right]) =>
+              createBinaryExpression(acc, operator, right),
+            left
+          )
+  )
+)
+
+const _term = _factor.bind((left) =>
+  zeroOrMore(pair(_additionOperator.or(_subtractionOperator), _factor)).map(
+    (rightSides) =>
+      rightSides.length === 0
+        ? left
+        : rightSides.reduce(
+            (acc, [operator, right]) =>
+              createBinaryExpression(acc, operator, right),
+            left
+          )
+  )
+)
+
+const _comparison = _term.bind((left) =>
+  zeroOrMore(
+    pair(
+      _lessThanOrEqualOperator
+        .or(_greaterThanOrEqualOperator)
+        .or(_lessThanOperator)
+        .or(_greaterThanOperator),
+      _unary
+    )
+  ).map((rightSides) =>
+    rightSides.length === 0
+      ? left
+      : rightSides.reduce(
+          (acc, [operator, right]) =>
+            createBinaryExpression(acc, operator, right),
+          left
+        )
+  )
+)
+
+const _equality = _comparison.bind((left) =>
+  zeroOrMore(pair(_equalOperator.or(_notEqualOperator), _comparison)).map(
+    (rightSides) =>
+      rightSides.length === 0
+        ? left
+        : rightSides.reduce(
+            (acc, [operator, right]) =>
+              createBinaryExpression(acc, operator, right),
+            left
+          )
+  )
+)
+
+const _pipeline = _equality.bind((left) =>
+  zeroOrMore(pair(_pipelineOperator, _equality)).map((rightSides) =>
+    rightSides.length === 0
+      ? left
+      : rightSides.reduce(
+          (acc, [operator, right]) =>
+            createBinaryExpression(acc, operator, right),
+          left
+        )
+  )
+)
+
+_expression = _pipeline
 
 const _argumentList = between(_parens, maybe(list(_expression, _comma))).map(
   (args) => createArgumentList((args || []).map(createArgument))
 )
 
-_functionCall = _variableAccess.bind((variable) =>
-  _argumentList.map((args) => createFunctionCall(variable, args))
+_functionCall = seq([_variableAccess, _argumentList]).map(([variable, args]) =>
+  createFunctionCall(variable, args)
 )
 
 const _parameter = _identifier.map(createParameter)
-const _parameters = between(_parens, maybe(list(_parameter, _comma))).map(
+const _parameterList = between(_parens, maybe(list(_parameter, _comma))).map(
   (params) => createParameterList(params || [])
 )
 
-const _block = between(_braces, zeroOrMore(_expression)).map(createBlock)
+const _block = between(
+  _braces,
+  zeroOrMore(_terminationOperator.or(_expression)).map((expressions) =>
+    expressions.filter(isAExpression)
+  )
+).map(createBlock)
 
-_function = _parameters.bind((parameterList) =>
-  _fatArrow.and(_block).map((body) => createFunction(parameterList, body))
+_functionExpression = seq([_parameterList, _fatArrow, _block]).map(
+  ([parameterList, _, body]) => createFunctionExpression(parameterList, body)
 )
 
 const _part1 = _part1Keyword.and(_block).map(createPart1)
 
 export const parseAOC = (input: string) =>
-  ws
-    .skip(maybe(cStyleComment))
-    .and(_part1)
-    .bind((part1) => ws.skip(maybe(cStyleComment)).and(constant(part1)))
-    .map((part1) => createProgram(part1))
+  seq([
+    ws.skip(maybe(cStyleComment)).and(_part1),
+    ws.skip(maybe(cStyleComment)),
+  ])
+    .map(([part1]) => createProgram(part1))
     .parseToEnd(input)

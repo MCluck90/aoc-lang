@@ -48,6 +48,8 @@ export const createBooleanExpression = (value: boolean): BooleanExpression => ({
   __type: 'BooleanExpression',
   value,
 })
+export const isABooleanExpression = (node: Node): node is BooleanExpression =>
+  node.__type === 'BooleanExpression'
 
 export interface StringExpression {
   __type: 'StringExpression'
@@ -57,20 +59,57 @@ export const createStringExpression = (value: string): StringExpression => ({
   __type: 'StringExpression',
   value,
 })
+export const isAStringExpression = (node: Node): node is StringExpression =>
+  node.__type === 'StringExpression'
 
-export interface PipeExpression {
-  __type: 'PipeExpression'
+export interface UnaryExpression {
+  __type: 'UnaryExpression'
+  operator: UnaryOperator
+  value: Expression
+}
+export const createUnaryExpression = (
+  operator: UnaryOperator,
+  value: Expression
+): UnaryExpression => ({
+  __type: 'UnaryExpression',
+  operator,
+  value,
+})
+export const isAUnaryExpression = (node: Node): node is UnaryExpression =>
+  node.__type === 'UnaryExpression'
+
+export type UnaryOperator = '-' | '!'
+
+export type BinaryOperator =
+  | '/'
+  | '*'
+  | '+'
+  | '-'
+  | '=='
+  | '!='
+  | '<'
+  | '<='
+  | '>'
+  | '>='
+  | '|'
+export interface BinaryExpression {
+  __type: 'BinaryExpression'
   left: Expression
+  operator: BinaryOperator
   right: Expression
 }
-export const createPipeExpression = (
+export const createBinaryExpression = (
   left: Expression,
+  operator: BinaryOperator,
   right: Expression
-): PipeExpression => ({
-  __type: 'PipeExpression',
+): BinaryExpression => ({
+  __type: 'BinaryExpression',
   left,
+  operator,
   right,
 })
+export const isABinaryExpression = (node: Node): node is BinaryExpression =>
+  node.__type === 'BinaryExpression'
 
 export interface Parameter {
   __type: 'Parameter'
@@ -92,20 +131,20 @@ export const createParameterList = (
   parameters,
 })
 
-export interface AOCFunction {
+export interface FunctionExpression {
   __type: 'Function'
   parameterList: ParameterList
   body: Block
 }
-export const createFunction = (
+export const createFunctionExpression = (
   parameterList: ParameterList,
   body: Block
-): AOCFunction => ({
+): FunctionExpression => ({
   __type: 'Function',
   parameterList,
   body,
 })
-export const isAFunction = (node: Node): node is AOCFunction =>
+export const isAFunction = (node: Node): node is FunctionExpression =>
   node.__type === 'Function'
 
 export interface Argument {
@@ -155,6 +194,8 @@ export const createFunctionCall = (
   variable,
   argumentList,
 })
+export const isAFunctionCall = (node: Node): node is FunctionCall =>
+  node.__type === 'FunctionCall'
 
 export interface Block {
   __type: 'Block'
@@ -185,9 +226,28 @@ export type Expression =
   | NumberExpression
   | BooleanExpression
   | StringExpression
-  | PipeExpression
-  | AOCFunction
+  | FunctionExpression
   | FunctionCall
+  | BinaryExpression
+  | UnaryExpression
+export const isAExpression = (value: unknown): value is Expression => {
+  if (value === undefined || value === null) {
+    return false
+  }
+
+  const node = value as Node
+  return (
+    isAIdentifier(node) ||
+    isAVariableAccess(node) ||
+    isANumberExpression(node) ||
+    isABooleanExpression(node) ||
+    isAStringExpression(node) ||
+    isAFunction(node) ||
+    isAFunctionCall(node) ||
+    isABinaryExpression(node) ||
+    isAUnaryExpression(node)
+  )
+}
 
 export type Node = Part1 | Part2 | Expression | Block | Program
 export const isANode = (node: unknown): node is Node =>

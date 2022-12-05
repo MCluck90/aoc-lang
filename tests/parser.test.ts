@@ -1,19 +1,23 @@
 import {
-  createArgument,
   createArgumentList,
+  createBinaryExpression,
   createBlock,
-  createFunction,
+  createBooleanExpression,
+  createFunctionExpression,
   createFunctionCall,
   createIdentifier,
+  createNumberExpression,
   createParameter,
   createParameterList,
   createPart1,
-  createPipeExpression,
   createProgram,
+  createStringExpression,
+  createUnaryExpression,
   createVariableAccess,
   isANumberExpression,
+  createArgument,
 } from '../src/ast'
-import { parseAOC } from '../src/parser'
+import { parseAOC, _expression } from '../src/parser'
 import { assertNodeType, assertSuccessfulParse } from './test-utils'
 
 it('should be able to parse an empty part_1 section', () => {
@@ -54,28 +58,6 @@ it('should be able to parse a part_1 with multiple expressions', () => {
   expect(program.part1.body.expressions).toHaveLength(4)
 })
 
-it('should be able to parse piped expressions', () => {
-  const program = parseAOC(`
-    part_1 {
-      readByLine
-      | groupByLineBreak
-    }
-  `)
-  assertSuccessfulParse(program)
-  expect(program).toEqual(
-    createProgram(
-      createPart1(
-        createBlock([
-          createPipeExpression(
-            createVariableAccess(createIdentifier('readByLine')),
-            createVariableAccess(createIdentifier('groupByLineBreak'))
-          ),
-        ])
-      )
-    )
-  )
-})
-
 it('should be able to parse function calls', () => {
   const program = parseAOC(`
     part_1 {
@@ -109,7 +91,7 @@ it('should be able to parse anonymous functions', () => {
     createProgram(
       createPart1(
         createBlock([
-          createFunction(
+          createFunctionExpression(
             createParameterList([
               createParameter(createIdentifier('x')),
               createParameter(createIdentifier('y')),
@@ -125,7 +107,7 @@ it('should be able to parse anonymous functions', () => {
 it('shold be able to parse a solution to day 1 part 1', () => {
   const program = parseAOC(`
     part_1 {
-      readByLine
+      readByLine()
       | groupByLineBreak
       | map((group) => { group | map(int) | reduce(add) })
       | sortDescending
@@ -133,6 +115,62 @@ it('shold be able to parse a solution to day 1 part 1', () => {
     }
   `)
   assertSuccessfulParse(program)
+
+  const readByLine = createFunctionCall(
+    createVariableAccess(createIdentifier('readByLine')),
+    createArgumentList([])
+  )
+  const groupByLineBreak = createVariableAccess(
+    createIdentifier('groupByLineBreak')
+  )
+  const lambda = createFunctionExpression(
+    createParameterList([createParameter(createIdentifier('group'))]),
+    createBlock([
+      createBinaryExpression(
+        createBinaryExpression(
+          createVariableAccess(createIdentifier('group')),
+          '|',
+          createFunctionCall(
+            createVariableAccess(createIdentifier('map')),
+            createArgumentList([
+              createArgument(createVariableAccess(createIdentifier('int'))),
+            ])
+          )
+        ),
+        '|',
+        createFunctionCall(
+          createVariableAccess(createIdentifier('reduce')),
+          createArgumentList([
+            createArgument(createVariableAccess(createIdentifier('add'))),
+          ])
+        )
+      ),
+    ])
+  )
+  const mapCall = createFunctionCall(
+    createVariableAccess(createIdentifier('map')),
+    createArgumentList([createArgument(lambda)])
+  )
+  const sortDescending = createVariableAccess(
+    createIdentifier('sortDescending')
+  )
+  const pop = createVariableAccess(createIdentifier('pop'))
+
+  expect(program.part1.body.expressions).toEqual([
+    createBinaryExpression(
+      createBinaryExpression(
+        createBinaryExpression(
+          createBinaryExpression(readByLine, '|', groupByLineBreak),
+          '|',
+          mapCall
+        ),
+        '|',
+        sortDescending
+      ),
+      '|',
+      pop
+    ),
+  ])
 })
 
 it('should be able to parse a single function call', () => {
@@ -142,4 +180,274 @@ it('should be able to parse a single function call', () => {
     }
   `)
   assertSuccessfulParse(program)
+})
+
+describe('expressions', () => {
+  it('should be able to parse numbers', () => {
+    const program = parseAOC(`
+      part_1 {
+        100
+        123.45
+        9_001
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createNumberExpression(100),
+      createNumberExpression(123.45),
+      createNumberExpression(9001),
+    ])
+  })
+
+  it('should be able to parse booleans', () => {
+    const program = parseAOC(`
+      part_1 {
+        true
+        false
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createBooleanExpression(true),
+      createBooleanExpression(false),
+    ])
+  })
+
+  it('should be able to parse strings', () => {
+    const program = parseAOC(`
+      part_1 {
+        'Hello'
+        "world"
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createStringExpression('Hello'),
+      createStringExpression('world'),
+    ])
+  })
+
+  it('should be able to parse negative numbers', () => {
+    const program = parseAOC(`
+      part_1 {
+        -1.25
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createUnaryExpression('-', createNumberExpression(1.25)),
+    ])
+  })
+
+  it('should be able to parse negation', () => {
+    const program = parseAOC(`
+      part_1 {
+        !true
+        !false
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createUnaryExpression('!', createBooleanExpression(true)),
+      createUnaryExpression('!', createBooleanExpression(false)),
+    ])
+  })
+
+  it('should be able to parse multiplication', () => {
+    const program = parseAOC(`
+      part_1 {
+        1 * 2
+        1 * 2 * 3 * 4 * 5
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createBinaryExpression(
+        createNumberExpression(1),
+        '*',
+        createNumberExpression(2)
+      ),
+      createBinaryExpression(
+        createBinaryExpression(
+          createBinaryExpression(
+            createBinaryExpression(
+              createNumberExpression(1),
+              '*',
+              createNumberExpression(2)
+            ),
+            '*',
+            createNumberExpression(3)
+          ),
+          '*',
+          createNumberExpression(4)
+        ),
+        '*',
+        createNumberExpression(5)
+      ),
+    ])
+  })
+
+  it('should be able to parse division', () => {
+    const program = parseAOC(`
+      part_1 {
+        1 / 2
+        1 / 2 / 3 / 4 / 5
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createBinaryExpression(
+        createNumberExpression(1),
+        '/',
+        createNumberExpression(2)
+      ),
+      createBinaryExpression(
+        createBinaryExpression(
+          createBinaryExpression(
+            createBinaryExpression(
+              createNumberExpression(1),
+              '/',
+              createNumberExpression(2)
+            ),
+            '/',
+            createNumberExpression(3)
+          ),
+          '/',
+          createNumberExpression(4)
+        ),
+        '/',
+        createNumberExpression(5)
+      ),
+    ])
+  })
+
+  it('should be able to parse comparisons', () => {
+    const program = parseAOC(`
+      part_1 {
+        1 < 2;
+        1 > 2;
+        1 <= 2;
+        1 >= 2
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createBinaryExpression(
+        createNumberExpression(1),
+        '<',
+        createNumberExpression(2)
+      ),
+      createBinaryExpression(
+        createNumberExpression(1),
+        '>',
+        createNumberExpression(2)
+      ),
+      createBinaryExpression(
+        createNumberExpression(1),
+        '<=',
+        createNumberExpression(2)
+      ),
+      createBinaryExpression(
+        createNumberExpression(1),
+        '>=',
+        createNumberExpression(2)
+      ),
+    ])
+  })
+
+  it('should be able to parse equality', () => {
+    const program = parseAOC(`
+      part_1 {
+        1 == 2;
+        1 != 2
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createBinaryExpression(
+        createNumberExpression(1),
+        '==',
+        createNumberExpression(2)
+      ),
+      createBinaryExpression(
+        createNumberExpression(1),
+        '!=',
+        createNumberExpression(2)
+      ),
+    ])
+  })
+
+  it('should be able to parse pipelines', () => {
+    const program = parseAOC(`
+      part_1 {
+        1 | 2;
+        1 | 2 | 3 | 4 | 5
+      }
+    `)
+    assertSuccessfulParse(program)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createBinaryExpression(
+        createNumberExpression(1),
+        '|',
+        createNumberExpression(2)
+      ),
+      createBinaryExpression(
+        createBinaryExpression(
+          createBinaryExpression(
+            createBinaryExpression(
+              createNumberExpression(1),
+              '|',
+              createNumberExpression(2)
+            ),
+            '|',
+            createNumberExpression(3)
+          ),
+          '|',
+          createNumberExpression(4)
+        ),
+        '|',
+        createNumberExpression(5)
+      ),
+    ])
+  })
+
+  it('should be able to parse function calls', () => {
+    const program = parseAOC(`
+      part_1 {
+        readByLine()
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createFunctionCall(
+        createVariableAccess(createIdentifier('readByLine')),
+        createArgumentList([])
+      ),
+    ])
+  })
+
+  it('should be able to parse function expressions', () => {
+    const program = parseAOC(`
+      part_1 {
+        (x, y) => { x + y }
+      }
+    `)
+    assertSuccessfulParse(program)
+    expect(program.part1.body.expressions).toEqual([
+      createFunctionExpression(
+        createParameterList([
+          createParameter(createIdentifier('x')),
+          createParameter(createIdentifier('y')),
+        ]),
+        createBlock([
+          createBinaryExpression(
+            createVariableAccess(createIdentifier('x')),
+            '+',
+            createVariableAccess(createIdentifier('y'))
+          ),
+        ])
+      ),
+    ])
+  })
 })
