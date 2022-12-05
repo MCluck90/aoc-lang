@@ -1,24 +1,12 @@
 part_1 {
   readByLine()
-}
-
-/*
-part_1 {
-  readByLine()
   | groupByLineBreak
   | map((group) => { group | map(int) | reduce(add) })
   | sortDescending
   | pop
 }
 
-part_1 {
-  readByLine()
-  | groupByLineBreak
-  | map((group) => { group.map(int).reduce(+)) }
-  | sortDescending
-  | pop
-}
-
+/*
 part_2 {
   readByLine()
   | groupByLineBreak

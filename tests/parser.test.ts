@@ -18,7 +18,11 @@ import {
   createArgument,
 } from '../src/ast'
 import { parseAOC, _expression } from '../src/parser'
-import { assertNodeType, assertSuccessfulParse } from './test-utils'
+import {
+  assertFailedParse,
+  assertNodeType,
+  assertSuccessfulParse,
+} from './test-utils'
 
 it('should be able to parse an empty part_1 section', () => {
   const program = parseAOC(`part_1 {}`)
@@ -99,12 +103,13 @@ it('should be able to parse anonymous functions', () => {
             createBlock([createVariableAccess(createIdentifier('x'))])
           ),
         ])
-      )
+      ),
+      null
     )
   )
 })
 
-it('shold be able to parse a solution to day 1 part 1', () => {
+it('should be able to parse a solution to day 1 part 1', () => {
   const program = parseAOC(`
     part_1 {
       readByLine()
@@ -450,4 +455,20 @@ describe('expressions', () => {
       ),
     ])
   })
+})
+
+it('should be able to parse a part 2', () => {
+  const program = parseAOC(`
+    part_1 {}
+    part_2 {}
+  `)
+  assertSuccessfulParse(program)
+  expect(program.part2).not.toBe(null)
+})
+
+it('should require a part 1 before a part 2', () => {
+  const program = parseAOC(`
+    part_2 {}
+  `)
+  assertFailedParse(program)
 })

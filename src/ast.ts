@@ -210,12 +210,12 @@ export const isABlock = (node: Node): node is Block => node.__type === 'Block'
 export interface Program {
   __type: 'Program'
   part1: Part1
-  part2?: Part2
+  part2: Part2 | null
 }
-export const createProgram = (part1: Part1, part2?: Part2): Program => ({
+export const createProgram = (part1: Part1, part2: Part2 | null): Program => ({
   __type: 'Program',
   part1,
-  part2,
+  part2: part2 ?? null,
 })
 export const isAProgram = (node: Node): node is Program =>
   node.__type === 'Program'

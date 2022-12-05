@@ -36,6 +36,7 @@ import {
   FunctionCall,
   Identifier,
   isAExpression,
+  createPart2,
 } from './ast'
 
 const token = createToken(ws)
@@ -209,11 +210,13 @@ _functionExpression = seq([_parameterList, _fatArrow, _block]).map(
 )
 
 const _part1 = _part1Keyword.and(_block).map(createPart1)
+const _part2 = _part2Keyword.and(_block).map(createPart2)
 
 export const parseAOC = (input: string) =>
   seq([
     ws.skip(maybe(cStyleComment)).and(_part1),
+    ws.skip(maybe(cStyleComment)).and(maybe(_part2)),
     ws.skip(maybe(cStyleComment)),
   ])
-    .map(([part1]) => createProgram(part1))
+    .map(([part1, part2]) => createProgram(part1, part2))
     .parseToEnd(input)
