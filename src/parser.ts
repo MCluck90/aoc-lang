@@ -59,7 +59,7 @@ const _braces = [token(/{/y), token(/}/y)] as const
 
 const _comma = token(/,/y)
 const _fatArrow = token(/=>/y)
-const _pipelineOperator = token(/\|/y) as Parser<'|'>
+const _pipelineOperator = token(/\|>/y) as Parser<'|>'>
 const _equalOperator = token(/==/y) as Parser<'=='>
 const _notEqualOperator = token(/!=/y) as Parser<'!='>
 const _lessThanOperator = token(/</y) as Parser<'<'>

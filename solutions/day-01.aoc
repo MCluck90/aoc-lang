@@ -1,18 +1,18 @@
 part_1 {
   readByLine()
-  | groupByLineBreak
-  | map((group) => { group | map(int) | reduce(add) })
-  | sortDescending
-  | pop
+  |> groupByLineBreak
+  |> map((group) => { group |> map(int) |> reduce(add) })
+  |> sortDescending
+  |> pop
 }
 
 /*
 part_2 {
   readByLine()
-  | groupByLineBreak
-  | (group) => { group.map(int).reduce(+) }
-  | sort
-  | .[0..3]
-  | reduce(+)
+  |> groupByLineBreak
+  |> (group) => { group.map(int).reduce(+) }
+  |> sort
+  |> .[0..3]
+  |> reduce(+)
 }
 */

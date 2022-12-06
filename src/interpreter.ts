@@ -195,7 +195,7 @@ export class Interpreter {
         return this.visitExpression(left) > this.visitExpression(right)
       case '>=':
         return this.visitExpression(left) >= this.visitExpression(right)
-      case '|':
+      case '|>':
         return this.visitExpression(right)(this.visitExpression(left))
     }
   }

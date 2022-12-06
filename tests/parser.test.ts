@@ -113,10 +113,10 @@ it('should be able to parse a solution to day 1 part 1', () => {
   const program = parseAOC(`
     part_1 {
       readByLine()
-      | groupByLineBreak
-      | map((group) => { group | map(int) | reduce(add) })
-      | sortDescending
-      | pop
+      |> groupByLineBreak
+      |> map((group) => { group |> map(int) |> reduce(add) })
+      |> sortDescending
+      |> pop
     }
   `)
   assertSuccessfulParse(program)
@@ -134,7 +134,7 @@ it('should be able to parse a solution to day 1 part 1', () => {
       createBinaryExpression(
         createBinaryExpression(
           createVariableAccess(createIdentifier('group')),
-          '|',
+          '|>',
           createFunctionCall(
             createVariableAccess(createIdentifier('map')),
             createArgumentList([
@@ -142,7 +142,7 @@ it('should be able to parse a solution to day 1 part 1', () => {
             ])
           )
         ),
-        '|',
+        '|>',
         createFunctionCall(
           createVariableAccess(createIdentifier('reduce')),
           createArgumentList([
@@ -165,14 +165,14 @@ it('should be able to parse a solution to day 1 part 1', () => {
     createBinaryExpression(
       createBinaryExpression(
         createBinaryExpression(
-          createBinaryExpression(readByLine, '|', groupByLineBreak),
-          '|',
+          createBinaryExpression(readByLine, '|>', groupByLineBreak),
+          '|>',
           mapCall
         ),
-        '|',
+        '|>',
         sortDescending
       ),
-      '|',
+      '|>',
       pop
     ),
   ])
@@ -385,8 +385,8 @@ describe('expressions', () => {
   it('should be able to parse pipelines', () => {
     const program = parseAOC(`
       part_1 {
-        1 | 2;
-        1 | 2 | 3 | 4 | 5
+        1 |> 2;
+        1 |> 2 |> 3 |> 4 |> 5
       }
     `)
     assertSuccessfulParse(program)
@@ -394,7 +394,7 @@ describe('expressions', () => {
     expect(program.part1.body.expressions).toEqual([
       createBinaryExpression(
         createNumberExpression(1),
-        '|',
+        '|>',
         createNumberExpression(2)
       ),
       createBinaryExpression(
@@ -402,16 +402,16 @@ describe('expressions', () => {
           createBinaryExpression(
             createBinaryExpression(
               createNumberExpression(1),
-              '|',
+              '|>',
               createNumberExpression(2)
             ),
-            '|',
+            '|>',
             createNumberExpression(3)
           ),
-          '|',
+          '|>',
           createNumberExpression(4)
         ),
-        '|',
+        '|>',
         createNumberExpression(5)
       ),
     ])

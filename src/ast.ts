@@ -91,7 +91,7 @@ export type BinaryOperator =
   | '<='
   | '>'
   | '>='
-  | '|'
+  | '|>'
 export interface BinaryExpression {
   __type: 'BinaryExpression'
   left: Expression
