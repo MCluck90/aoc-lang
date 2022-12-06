@@ -1,7 +1,4 @@
-import * as fs from 'fs'
-import * as path from 'path'
 import {
-  Argument,
   BinaryExpression,
   Block,
   BooleanExpression,
@@ -20,98 +17,29 @@ import {
   VariableAccess,
   isAVariableAccess,
 } from './ast'
+import { createGlobalScope } from './global'
+import { Scope } from './scope'
 
 const isCallable = (
   value: unknown
 ): value is ((...args: any[]) => any) & Function => typeof value === 'function'
 
-class Scope {
-  private values: Map<string, unknown> = new Map()
-  constructor(public readonly parent?: Scope) {}
-
-  getValue(identifier: string): unknown {
-    if (this.values.has(identifier)) {
-      return this.values.get(identifier)
-    }
-
-    return this.parent?.getValue(identifier)
-  }
-
-  setValue(identifier: string, value: unknown) {
-    this.values.set(identifier, value)
-  }
-}
-
 export class Interpreter {
-  private activeScope: Scope
+  activeScope: Scope
 
-  constructor(day: string, private readonly program: Program) {
-    this.activeScope = new Scope()
-    this.activeScope.setValue('readByLine', () => {
-      const p = path.join(process.cwd(), 'data', `${day}.txt`)
-      return fs.readFileSync(p).toString().split('\n')
-    })
-
-    this.activeScope.setValue('pop', (array: unknown[]) => array.pop())
-
-    this.activeScope.setValue('sortDescending', (array: unknown[]) => {
-      const copy = [...array]
-      if (copy.length === 0) {
-        return copy
-      }
-      const isNumbers = typeof copy[0] === 'number'
-      if (isNumbers) {
-        copy.sort((a, b) => (a as number) - (b as number))
-      } else {
-        copy.sort()
-      }
-      return copy
-    })
-
-    this.activeScope.setValue(
-      'map',
-      (fnArg: Argument<FunctionExpression>) => (array: unknown[]) =>
-        array.map((element) => this.executeFunction(fnArg.value, [element]))
-    )
-
-    this.activeScope.setValue(
-      'reduce',
-      (fnArg: Argument<FunctionExpression>) => (array: unknown[]) =>
-        array.reduce((acc, element) =>
-          this.executeFunction(fnArg.value, [acc, element])
-        )
-    )
-
-    this.activeScope.setValue('int', parseInt)
-    this.activeScope.setValue('add', (x: number) => (y: number) => x + y)
-
-    this.activeScope.setValue('groupByLineBreak', (lines: string[]) => {
-      const groups: string[][] = []
-      let group: string[] = []
-      for (const line of lines) {
-        if (line === '' && group.length > 0) {
-          groups.push(group)
-          group = []
-        } else {
-          group.push(line)
-        }
-      }
-      if (group.length > 0) {
-        groups.push(group)
-      }
-      return groups
-    })
+  constructor(day: string, readonly program: Program) {
+    this.activeScope = createGlobalScope(day, this)
   }
 
   execute() {
     this.visitProgram(this.program)
   }
 
-  private pushScope() {
+  pushScope() {
     this.activeScope = new Scope(this.activeScope)
   }
 
-  private popScope() {
+  popScope() {
     const parent = this.activeScope.parent
     if (!parent) {
       throw new Error('Attempted to exit global scope')
@@ -119,7 +47,7 @@ export class Interpreter {
     this.activeScope = parent
   }
 
-  private visitProgram(program: Program) {
+  visitProgram(program: Program) {
     console.log('Part 1')
     this.pushScope()
     console.log(this.visitBlock(program.part1.body))
@@ -133,7 +61,7 @@ export class Interpreter {
     }
   }
 
-  private visitBlock(block: Block): unknown {
+  visitBlock(block: Block): unknown {
     let lastExpression = null
     for (const expression of block.expressions) {
       lastExpression = this.visitExpression(expression)
@@ -141,11 +69,11 @@ export class Interpreter {
     return lastExpression
   }
 
-  private visitExpression(expression: Expression) {
+  visitExpression(expression: Expression) {
     return this[`visit${expression.__type}`](expression as any)
   }
 
-  private visitIdentifier(identifier: Identifier) {
+  visitIdentifier(identifier: Identifier) {
     const result = this.activeScope.getValue(identifier.value)
     if (result === undefined) {
       throw new Error(`Unrecognized variable: ${identifier.value}`)
@@ -153,14 +81,14 @@ export class Interpreter {
     return result
   }
 
-  private visitVariableAccess(variableAccess: VariableAccess) {
+  visitVariableAccess(variableAccess: VariableAccess) {
     if (isAIdentifier(variableAccess.left)) {
       return this.visitIdentifier(variableAccess.left)
     }
     throw new Error('Unhandled variable access case')
   }
 
-  private visitUnaryExpression(expression: UnaryExpression): any {
+  visitUnaryExpression(expression: UnaryExpression): any {
     switch (expression.operator) {
       case '!':
         return !this.visitExpression(expression.value)
@@ -169,11 +97,7 @@ export class Interpreter {
     }
   }
 
-  private visitBinaryExpression({
-    left,
-    operator,
-    right,
-  }: BinaryExpression): any {
+  visitBinaryExpression({ left, operator, right }: BinaryExpression): any {
     switch (operator) {
       case '!=':
         return this.visitExpression(left) !== this.visitExpression(right)
@@ -200,15 +124,15 @@ export class Interpreter {
     }
   }
 
-  private visitBooleanExpression(expression: BooleanExpression) {
+  visitBooleanExpression(expression: BooleanExpression) {
     return expression.value
   }
 
-  private visitStringExpression(expression: StringExpression) {
+  visitStringExpression(expression: StringExpression) {
     return expression.value
   }
 
-  private visitFunctionExpression(func: FunctionExpression) {
+  visitFunctionExpression(func: FunctionExpression) {
     const fn = (...args: any[]) => {
       this.pushScope()
       for (let i = 0; i < func.parameterList.parameters.length; i++) {
@@ -223,16 +147,16 @@ export class Interpreter {
     return fn
   }
 
-  private visitFunctionCall(call: FunctionCall) {
+  visitFunctionCall(call: FunctionCall) {
     const func = this.visitVariableAccess(call.variable)
     return this.executeFunction(func as any, call.argumentList.arguments)
   }
 
-  private visitNumberExpression(num: NumberExpression) {
+  visitNumberExpression(num: NumberExpression) {
     return num.value
   }
 
-  private executeFunction(
+  executeFunction(
     node: Node | (((...args: any[]) => any) & Function),
     args: unknown[]
   ): any {
