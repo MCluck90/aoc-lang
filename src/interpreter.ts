@@ -9,10 +9,10 @@ import {
   FunctionCall,
   FunctionExpression,
   Identifier,
-  isAnArgument,
   isAFunctionExpression,
   isAIdentifier,
   isANode,
+  Node,
   NumberExpression,
   Program,
   StringExpression,
@@ -21,9 +21,13 @@ import {
   isAVariableAccess,
 } from './ast'
 
+const isCallable = (
+  value: unknown
+): value is ((...args: any[]) => any) & Function => typeof value === 'function'
+
 class Scope {
   private values: Map<string, unknown> = new Map()
-  constructor(private readonly parent?: Scope) {}
+  constructor(public readonly parent?: Scope) {}
 
   getValue(identifier: string): unknown {
     if (this.values.has(identifier)) {
@@ -38,58 +42,50 @@ class Scope {
   }
 }
 
-const globalScope = new Scope()
-
 export class Interpreter {
+  private activeScope: Scope
+
   constructor(day: string, private readonly program: Program) {
-    globalScope.setValue('readByLine', () => {
+    this.activeScope = new Scope()
+    this.activeScope.setValue('readByLine', () => {
       const p = path.join(process.cwd(), 'data', `${day}.txt`)
       return fs.readFileSync(p).toString().split('\n')
     })
 
-    globalScope.setValue('pop', (array: any[]) => array.pop())
+    this.activeScope.setValue('pop', (array: unknown[]) => array.pop())
 
-    globalScope.setValue('sortDescending', (array: any[]) => {
+    this.activeScope.setValue('sortDescending', (array: unknown[]) => {
       const copy = [...array]
       if (copy.length === 0) {
         return copy
       }
       const isNumbers = typeof copy[0] === 'number'
-      copy.sort((a, b) => {
-        if (isNumbers) {
-          return a - b
-        }
-        if (a < b) {
-          return 1
-        } else if (a > b) {
-          return -1
-        } else {
-          return 0
-        }
-      })
+      if (isNumbers) {
+        copy.sort((a, b) => (a as number) - (b as number))
+      } else {
+        copy.sort()
+      }
       return copy
     })
 
-    globalScope.setValue(
+    this.activeScope.setValue(
       'map',
-      (fnArg: Argument<FunctionExpression>) => (array: any[]) =>
-        array.map((element) =>
-          this.executeFunction(fnArg.value as any, [element])
-        )
+      (fnArg: Argument<FunctionExpression>) => (array: unknown[]) =>
+        array.map((element) => this.executeFunction(fnArg.value, [element]))
     )
 
-    globalScope.setValue(
+    this.activeScope.setValue(
       'reduce',
-      (fnArg: Argument<FunctionExpression>) => (array: any[]) =>
+      (fnArg: Argument<FunctionExpression>) => (array: unknown[]) =>
         array.reduce((acc, element) =>
-          this.executeFunction(fnArg.value as any, [acc, element])
+          this.executeFunction(fnArg.value, [acc, element])
         )
     )
 
-    globalScope.setValue('int', parseInt)
-    globalScope.setValue('add', (x: number) => (y: number) => x + y)
+    this.activeScope.setValue('int', parseInt)
+    this.activeScope.setValue('add', (x: number) => (y: number) => x + y)
 
-    globalScope.setValue('groupByLineBreak', (lines: string[]) => {
+    this.activeScope.setValue('groupByLineBreak', (lines: string[]) => {
       const groups: string[][] = []
       let group: string[] = []
       for (const line of lines) {
@@ -111,13 +107,29 @@ export class Interpreter {
     this.visitProgram(this.program)
   }
 
+  private pushScope() {
+    this.activeScope = new Scope(this.activeScope)
+  }
+
+  private popScope() {
+    const parent = this.activeScope.parent
+    if (!parent) {
+      throw new Error('Attempted to exit global scope')
+    }
+    this.activeScope = parent
+  }
+
   private visitProgram(program: Program) {
     console.log('Part 1')
+    this.pushScope()
     console.log(this.visitBlock(program.part1.body))
+    this.popScope()
 
     if (program.part2) {
       console.log('Part 2')
+      this.pushScope()
       console.log(this.visitBlock(program.part2.body))
+      this.popScope()
     }
   }
 
@@ -134,14 +146,14 @@ export class Interpreter {
   }
 
   private visitIdentifier(identifier: Identifier) {
-    const result = globalScope.getValue(identifier.value)
+    const result = this.activeScope.getValue(identifier.value)
     if (result === undefined) {
       throw new Error(`Unrecognized variable: ${identifier.value}`)
     }
     return result
   }
 
-  private visitVariableAccess(variableAccess: VariableAccess): any {
+  private visitVariableAccess(variableAccess: VariableAccess) {
     if (isAIdentifier(variableAccess.left)) {
       return this.visitIdentifier(variableAccess.left)
     }
@@ -197,7 +209,18 @@ export class Interpreter {
   }
 
   private visitFunctionExpression(func: FunctionExpression) {
-    return func
+    const fn = (...args: any[]) => {
+      this.pushScope()
+      for (let i = 0; i < func.parameterList.parameters.length; i++) {
+        const parameter = func.parameterList.parameters[i]
+        const argument = args[i]
+        this.activeScope.setValue(parameter.name.value, argument)
+      }
+      const result = this.visitBlock(func.body)
+      this.popScope()
+      return result
+    }
+    return fn
   }
 
   private visitFunctionCall(call: FunctionCall) {
@@ -210,36 +233,37 @@ export class Interpreter {
   }
 
   private executeFunction(
-    node: Node | ((...args: any[]) => any),
+    node: Node | (((...args: any[]) => any) & Function),
     args: unknown[]
   ): any {
     if (isANode(node)) {
       if (isAFunctionExpression(node)) {
-        // TODO: Create a new scope
-        for (let i = 0; i < node.parameterList.parameters.length; i++) {
-          const parameter = node.parameterList.parameters[i]
-          const argument = args[i]
-          globalScope.setValue(
-            parameter.name.value,
-            isAnArgument(argument)
-              ? this.visitExpression(argument.value)
-              : argument
-          )
-        }
-        return this.visitBlock(node.body)
+        return this.executeFunction(this.visitFunctionExpression(node), args)
       } else if (isAVariableAccess(node)) {
-        return this.executeFunction(this.visitVariableAccess(node), args)
+        const value = this.visitVariableAccess(node)
+        if (isCallable(value) || isAFunctionExpression(value)) {
+          return this.executeFunction(value, args)
+        }
+
+        // TODO: Create stringify function for variable accesses
+        throw new Error(`Cannot call "${node.left} as a function`)
       } else {
         throw new Error(`Unhandled node type: ${node.__type}`)
       }
+    } else if (typeof node === 'function') {
+      const result = node.call(null, args[0])
+      return args
+        .slice(1)
+        .reduce(
+          (result, arg) =>
+            isCallable(result) || isANode(result)
+              ? this.executeFunction(result, [arg])
+              : result,
+          result
+        )
+    } else {
+      console.error(node)
+      throw new Error(`Unhandled function execution`)
     }
-
-    const result = (node as any).call(null, args[0])
-    return args
-      .slice(1)
-      .reduce(
-        (result, arg) => this.executeFunction(result as any, [arg]),
-        result
-      )
   }
 }

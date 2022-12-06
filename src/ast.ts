@@ -144,8 +144,10 @@ export const createFunctionExpression = (
   parameterList,
   body,
 })
-export const isAFunctionExpression = (node: Node): node is FunctionExpression =>
-  node.__type === 'FunctionExpression'
+export const isAFunctionExpression = (
+  node: unknown
+): node is FunctionExpression =>
+  isANode(node) && node.__type === 'FunctionExpression'
 
 export interface Argument<T extends Expression = Expression> {
   __type: 'Argument'
@@ -251,7 +253,7 @@ export const isAExpression = (value: unknown): value is Expression => {
   )
 }
 
-export type Node = Part1 | Part2 | Expression | Block | Program | Argument
+export type Node = { __type: string }
 export const isANode = (node: unknown): node is Node =>
   node !== undefined &&
   node !== null &&
