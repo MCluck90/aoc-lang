@@ -132,7 +132,7 @@ export const createParameterList = (
 })
 
 export interface FunctionExpression {
-  __type: 'Function'
+  __type: 'FunctionExpression'
   parameterList: ParameterList
   body: Block
 }
@@ -140,21 +140,23 @@ export const createFunctionExpression = (
   parameterList: ParameterList,
   body: Block
 ): FunctionExpression => ({
-  __type: 'Function',
+  __type: 'FunctionExpression',
   parameterList,
   body,
 })
-export const isAFunction = (node: Node): node is FunctionExpression =>
-  node.__type === 'Function'
+export const isAFunctionExpression = (node: Node): node is FunctionExpression =>
+  node.__type === 'FunctionExpression'
 
-export interface Argument {
+export interface Argument<T extends Expression = Expression> {
   __type: 'Argument'
-  value: Expression
+  value: T
 }
 export const createArgument = (value: Expression): Argument => ({
   __type: 'Argument',
   value,
 })
+export const isAnArgument = (node: unknown): node is Argument =>
+  isANode(node) && node.__type === 'Argument'
 
 export interface ArgumentList {
   __type: 'ArgumentList'
@@ -242,14 +244,14 @@ export const isAExpression = (value: unknown): value is Expression => {
     isANumberExpression(node) ||
     isABooleanExpression(node) ||
     isAStringExpression(node) ||
-    isAFunction(node) ||
+    isAFunctionExpression(node) ||
     isAFunctionCall(node) ||
     isABinaryExpression(node) ||
     isAUnaryExpression(node)
   )
 }
 
-export type Node = Part1 | Part2 | Expression | Block | Program
+export type Node = Part1 | Part2 | Expression | Block | Program | Argument
 export const isANode = (node: unknown): node is Node =>
   node !== undefined &&
   node !== null &&
