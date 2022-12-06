@@ -114,7 +114,7 @@ it('should be able to parse a solution to day 1 part 1', () => {
     part_1 {
       readByLine()
       |> groupByLineBreak
-      |> map((group) => { group |> map(int) |> reduce(add) })
+      |> map((group) => { group |> map(int) |> reduce(+) })
       |> sortDescending
       |> pop
     }
@@ -146,7 +146,7 @@ it('should be able to parse a solution to day 1 part 1', () => {
         createFunctionCall(
           createVariableAccess(createIdentifier('reduce')),
           createArgumentList([
-            createArgument(createVariableAccess(createIdentifier('add'))),
+            createArgument(createVariableAccess(createIdentifier('+'))),
           ])
         )
       ),

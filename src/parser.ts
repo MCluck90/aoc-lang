@@ -73,6 +73,18 @@ const _subtractionOperator = token(/-/y) as Parser<'-'>
 const _negationOperator = token(/!/y) as Parser<'!'>
 const _terminationOperator = token(/;/y) as Parser<';'>
 
+const _binaryOperator = _additionOperator
+  .or(_subtractionOperator)
+  .or(_multiplyOperator)
+  .or(_divideOperator)
+  .or(_equalOperator)
+  .or(_notEqualOperator)
+  .or(_equalOperator)
+  .or(_lessThanOrEqualOperator)
+  .or(_lessThanOperator)
+  .or(_greaterThanOrEqualOperator)
+  .or(_greaterThanOperator)
+
 const _identifier: Parser<Identifier> = token(/[a-z_][a-z0-9_]*/iy).bind(
   (identifier) =>
     _keyword.matchesToEnd(identifier)
@@ -91,7 +103,9 @@ const _string = ws
   .map(createStringExpression)
 const _literal = _number.or(_boolean).or(_string)
 
-const _variableAccess = _identifier.map(createVariableAccess)
+const _variableAccess = _identifier
+  .or(_binaryOperator.map(createIdentifier))
+  .map(createVariableAccess)
 let _functionCall: Parser<FunctionCall> = error('Not yet implemented')
 let _functionExpression: Parser<FunctionExpression> = error(
   'Not yet implemented'

@@ -18,4 +18,10 @@ if (program instanceof ParseError) {
 }
 
 const interpreter = new Interpreter(day, program)
-interpreter.execute()
+const { part1, part2 } = interpreter.execute()
+console.log('Part 1')
+console.log(part1)
+if (part2 !== undefined) {
+  console.log('Part 2')
+  console.log(part2)
+}

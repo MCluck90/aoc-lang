@@ -1,7 +1,7 @@
 part_1 {
   readByLine()
   |> groupByLineBreak
-  |> map((group) => { group |> map(int) |> reduce(add) })
+  |> map((group) => { group |> map(int) |> reduce(+) })
   |> sortDescending
   |> pop
 }
@@ -12,7 +12,7 @@ part_2 {
   |> groupByLineBreak
   |> (group) => { group.map(int).reduce(+) }
   |> sort
-  |> .[0..3]
+  |> [0..3]
   |> reduce(+)
 }
 */

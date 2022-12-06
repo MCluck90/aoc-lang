@@ -32,7 +32,7 @@ export class Interpreter {
   }
 
   execute() {
-    this.visitProgram(this.program)
+    return this.visitProgram(this.program)
   }
 
   pushScope() {
@@ -47,18 +47,18 @@ export class Interpreter {
     this.activeScope = parent
   }
 
-  visitProgram(program: Program) {
-    console.log('Part 1')
+  visitProgram(program: Program): { part1: unknown; part2: unknown } {
     this.pushScope()
-    console.log(this.visitBlock(program.part1.body))
+    const part1 = this.visitBlock(program.part1.body)
     this.popScope()
 
+    let part2
     if (program.part2) {
-      console.log('Part 2')
       this.pushScope()
-      console.log(this.visitBlock(program.part2.body))
+      part2 = this.visitBlock(program.part2.body)
       this.popScope()
     }
+    return { part1, part2 }
   }
 
   visitBlock(block: Block): unknown {

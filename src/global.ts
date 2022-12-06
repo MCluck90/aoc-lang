@@ -47,7 +47,16 @@ export const createGlobalScope = (
   )
 
   globalScope.setValue('int', parseInt)
-  globalScope.setValue('add', (x: number) => (y: number) => x + y)
+  globalScope.setValue('+', (x: number) => (y: number) => x + y)
+  globalScope.setValue('-', (x: number) => (y: number) => x - y)
+  globalScope.setValue('*', (x: number) => (y: number) => x * y)
+  globalScope.setValue('/', (x: number) => (y: number) => x / y)
+  globalScope.setValue('==', (x: number) => (y: number) => x === y)
+  globalScope.setValue('!=', (x: number) => (y: number) => x !== y)
+  globalScope.setValue('<=', (x: number) => (y: number) => x <= y)
+  globalScope.setValue('<', (x: number) => (y: number) => x < y)
+  globalScope.setValue('>=', (x: number) => (y: number) => x >= y)
+  globalScope.setValue('>', (x: number) => (y: number) => x > y)
 
   globalScope.setValue('groupByLineBreak', (lines: string[]) => {
     const groups: string[][] = []
